@@ -91,6 +91,24 @@ class ShareService {
       throw Exception('Failed to share file: $e');
     }
   }
+
+  Future<void> shareFiles(List<FileItem> files) async {
+    if (files.isEmpty) return;
+
+    try {
+      final shareLinks = await Future.wait(
+        files.map((file) => createShareLink(path: file.path))
+      );
+
+      final text = files.length == 1
+          ? 'Share link for ${files.first.name}:\n${shareLinks.first}'
+          : 'Share links for ${files.length} files:\n${shareLinks.join('\n')}';
+
+      await Share.share(text);
+    } catch (e) {
+      throw Exception('Failed to share files: $e');
+    }
+  }
 }
 
 class ShareInfo {

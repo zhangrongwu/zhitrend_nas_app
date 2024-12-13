@@ -8,6 +8,7 @@ class FileItem {
   final bool isLocal;
   final bool isSynced;
   final String? localPath;
+  final int childCount;
 
   FileItem({
     required this.name,
@@ -19,6 +20,7 @@ class FileItem {
     this.isLocal = false,
     this.isSynced = false,
     this.localPath,
+    this.childCount = 0,
   });
 
   factory FileItem.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class FileItem {
       isLocal: json['is_local'] as bool? ?? false,
       isSynced: json['is_synced'] as bool? ?? false,
       localPath: json['local_path'] as String?,
+      childCount: json['child_count'] as int? ?? 0,
     );
   }
 
@@ -46,6 +49,7 @@ class FileItem {
       'is_local': isLocal,
       'is_synced': isSynced,
       'local_path': localPath,
+      'child_count': childCount,
     };
   }
 
@@ -59,6 +63,7 @@ class FileItem {
     bool? isLocal,
     bool? isSynced,
     String? localPath,
+    int? childCount,
   }) {
     return FileItem(
       name: name ?? this.name,
@@ -70,6 +75,7 @@ class FileItem {
       isLocal: isLocal ?? this.isLocal,
       isSynced: isSynced ?? this.isSynced,
       localPath: localPath ?? this.localPath,
+      childCount: childCount ?? this.childCount,
     );
   }
 

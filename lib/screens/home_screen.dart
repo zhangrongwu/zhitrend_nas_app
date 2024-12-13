@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import '../services/file_manager.dart';
 import '../services/selection_manager.dart';
 import '../models/file_item.dart';
@@ -15,16 +16,22 @@ import '../widgets/bulk_action_bar.dart';
 import 'preview_screen.dart';
 import 'search_screen.dart';
 import 'shares_screen.dart';
+import '../services/share_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (_) => SelectionManager(),
-      child: Consumer2<FileManager, SelectionManager>(
-        builder: (context, fileManager, selectionManager, child) {
+      child: Consumer3<FileManager, SelectionManager, ShareService>(
+        builder: (context, fileManager, selectionManager, shareService, child) {
           return Scaffold(
             appBar: AppBar(
               title: const Text('ZhiTrend NAS'),
@@ -93,7 +100,7 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                if (fileManager.loading)
+                if (fileManager.isLoading)
                   const LinearProgressIndicator()
                 else if (fileManager.error != null)
                   Center(
@@ -106,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: () => fileManager.loadFiles(),
+                          onPressed: () => fileManager.loadFiles(fileManager.currentPath),
                           child: const Text('Retry'),
                         ),
                       ],
@@ -115,13 +122,13 @@ class HomeScreen extends StatelessWidget {
                 else
                   Expanded(
                     child: RefreshIndicator(
-                      onRefresh: () => fileManager.loadFiles(),
+                      onRefresh: () => fileManager.loadFiles(fileManager.currentPath),
                       child: ListView.builder(
                         itemCount: fileManager.items.length,
                         itemBuilder: (context, index) {
                           final item = fileManager.items[index];
                           return FileListItem(
-                            item: item,
+                            file: item,
                             onTap: () {
                               if (selectionManager.isSelectionMode) {
                                 selectionManager.toggleSelection(item);
@@ -131,11 +138,13 @@ class HomeScreen extends StatelessWidget {
                                 _handleItemTap(context, item);
                               }
                             },
-                            onShare: () {
-                              showDialog(
-                                context: context,
-                                builder: (context) => ShareDialog(file: item),
+                            onShare: () async {
+                              final shareLink = await shareService.createShareLink(
+                                path: item.path,
+                                expirationDays: 7,
+                                allowDownload: true,
                               );
+                              Share.share(shareLink);
                             },
                             onDelete: () async {
                               final confirmed = await showDialog<bool>(

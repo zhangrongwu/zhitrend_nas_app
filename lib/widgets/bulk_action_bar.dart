@@ -34,9 +34,14 @@ class BulkActionBar extends StatelessWidget {
 
     if (confirmed == true && context.mounted) {
       try {
-        await Future.wait(
-          selectionManager.selectedPaths.map((path) => fileManager.deleteItem(path))
-        );
+        for (var path in selectionManager.selectedPaths) {
+          try {
+            final file = await fileManager.getFile(path);
+            await fileManager.deleteItem(file);
+          } catch (e) {
+            debugPrint('Error deleting file $path: $e');
+          }
+        }
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Items deleted successfully')),
@@ -56,28 +61,27 @@ class BulkActionBar extends StatelessWidget {
 
   Future<void> _handleShare(BuildContext context) async {
     final selectionManager = context.read<SelectionManager>();
-    final shareService = context.read<ShareService>();
     final fileManager = context.read<FileManager>();
+    final shareService = context.read<ShareService>();
 
     try {
-      final items = await Future.wait(
-        selectionManager.selectedPaths.map((path) => fileManager.getFileInfo(path))
-      );
-
-      if (context.mounted) {
-        final shareLinks = await Future.wait(
-          items.map((item) => shareService.createShareLink(path: item.path))
-        );
-
-        if (context.mounted) {
-          await shareService.shareViaSystem(items.first); // Share first item as example
-          selectionManager.clearSelection();
+      final files = <FileItem>[];
+      for (var path in selectionManager.selectedPaths) {
+        try {
+          final file = await fileManager.getFile(path);
+          files.add(file);
+        } catch (e) {
+          debugPrint('Error getting file $path: $e');
         }
+      }
+      
+      if (files.isNotEmpty) {
+        await shareService.shareFiles(files);
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error sharing items: $e')),
+          SnackBar(content: Text('Error sharing files: $e')),
         );
       }
     }

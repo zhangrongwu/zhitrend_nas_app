@@ -34,6 +34,10 @@ class FileManager extends ChangeNotifier {
   String get sortBy => _sortBy;
   String get sortOrder => _sortOrder;
 
+  Future<void> navigateToDirectory(String path) async {
+    await loadFiles(path);
+  }
+
   Future<void> refreshCurrentDirectory() async {
     await loadFiles(_currentPath);
   }
@@ -87,29 +91,71 @@ class FileManager extends ChangeNotifier {
     }
   }
 
-  Future<void> deleteItem(String path) async {
-    try {
-      _error = null;
-      notifyListeners();
+  Future<void> deleteItem(FileItem item) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
-      await _apiService.deleteItem(path);
-      await _databaseService.deleteFile(path);
-      await refreshCurrentDirectory();
+    try {
+      await _apiService.deleteFile(item.path);
+      await _databaseService.deleteFile(item.path);
+      _items.removeWhere((f) => f.path == item.path);
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
 
   Future<void> uploadFile(File file) async {
-    try {
-      _error = null;
-      notifyListeners();
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
 
+    try {
       await _apiService.uploadFile(_currentPath, file);
       await refreshCurrentDirectory();
     } catch (e) {
       _error = e.toString();
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> uploadFiles(List<File> files) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      for (final file in files) {
+        await _apiService.uploadFile(_currentPath, file);
+        
+        final fileItem = FileItem(
+          name: file.path.split('/').last,
+          path: '${_currentPath}/${file.path.split('/').last}',
+          isDirectory: false,
+          size: await file.length(),
+          modifiedTime: await file.lastModified(),
+          mimeType: 'application/octet-stream',
+        );
+        
+        await _databaseService.saveFile(fileItem);
+      }
+      await refreshCurrentDirectory();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
@@ -163,7 +209,7 @@ class FileManager extends ChangeNotifier {
           comparison = a.size.compareTo(b.size);
           break;
         case 'modified':
-          comparison = a.modifiedAt.compareTo(b.modifiedAt);
+          comparison = a.modifiedTime.compareTo(b.modifiedTime);
           break;
         default:
           comparison = 0;
@@ -173,11 +219,25 @@ class FileManager extends ChangeNotifier {
     });
   }
 
-  Future<FileItem> getFileInfo(String path) async {
+  Future<FileItem> getFile(String path) async {
     try {
-      return await _apiService.getFileInfo(path);
+      final file = await _apiService.getFileInfo(path);
+      if (file != null) {
+        await _databaseService.saveFile(file);
+        return file;
+      }
+      final localFile = await _databaseService.getFile(path);
+      if (localFile != null) {
+        return localFile;
+      }
+      throw Exception('File not found: $path');
     } catch (e) {
-      throw Exception('Failed to get file info: $e');
+      debugPrint('Error getting file: $e');
+      final localFile = await _databaseService.getFile(path);
+      if (localFile != null) {
+        return localFile;
+      }
+      throw Exception('File not found: $path');
     }
   }
 }

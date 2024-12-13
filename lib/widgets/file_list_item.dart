@@ -40,6 +40,14 @@ class FileListItem extends StatelessWidget {
     }
   }
 
+  Widget _buildSubtitle() {
+    final sizeText = file.isDirectory
+        ? '${file.childCount} items'
+        : _formatFileSize(file.size);
+    final dateText = DateFormat('yyyy-MM-dd HH:mm').format(file.modifiedTime);
+    return Text('$sizeText • $dateText');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Consumer<SelectionManager>(
@@ -84,10 +92,7 @@ class FileListItem extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          subtitle: Text(
-            '${_formatDate(file.modifiedAt)} - ${file.isDirectory ? "${file.childCount} items" : _formatFileSize(file.size)}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          subtitle: _buildSubtitle(),
           trailing: selectionManager.isSelectionMode
               ? null
               : PopupMenuButton(

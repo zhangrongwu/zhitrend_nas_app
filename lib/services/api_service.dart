@@ -80,19 +80,35 @@ class ApiService {
     }
   }
 
-  Future<void> uploadFile(String directory, File file) async {
+  Future<void> uploadFile(String path, File file) async {
     try {
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(file.path),
-        'directory': directory,
+        'file': await MultipartFile.fromFile(file.path, filename: file.path.split('/').last),
+        'path': path,
       });
 
-      await _dio.post(
-        '/api/upload',
-        data: formData,
-      );
+      final response = await _dio.post('/api/upload', data: formData);
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to upload file');
+      }
     } catch (e) {
       debugPrint('Error uploading file: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteFile(String path) async {
+    try {
+      final response = await _dio.delete('/api/files', queryParameters: {
+        'path': path,
+      });
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete file');
+      }
+    } catch (e) {
+      debugPrint('Error deleting file: $e');
       rethrow;
     }
   }

@@ -24,6 +24,11 @@ class SyncService extends ChangeNotifier {
 
   bool get isSyncing => _isSyncing;
 
+  Future<void> initialize() async {
+    // 初始化时执行一次同步
+    await syncAll();
+  }
+
   void _initSync() {
     // 监听网络连接状态
     _connectivitySubscription = Connectivity()
