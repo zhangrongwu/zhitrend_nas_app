@@ -14,6 +14,24 @@ class DatabaseService {
     await database;
   }
 
+  Future<void> init() async {
+    final db = await database;
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS files (
+        path TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        size INTEGER NOT NULL,
+        modified TEXT NOT NULL,
+        is_directory INTEGER NOT NULL,
+        local_path TEXT,
+        sync_status TEXT,
+        last_synced TEXT,
+        is_synced INTEGER DEFAULT 0,
+        child_count INTEGER DEFAULT 0
+      )
+    ''');
+  }
+
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'zhitrend_nas.db');
@@ -34,7 +52,8 @@ class DatabaseService {
             local_path TEXT,
             sync_status TEXT,
             last_synced TEXT,
-            is_synced INTEGER
+            is_synced INTEGER,
+            child_count INTEGER DEFAULT 0
           )
         ''');
 
@@ -79,6 +98,9 @@ class DatabaseService {
         'size': file.size,
         'modified': file.modifiedTime.toIso8601String(),
         'is_directory': file.isDirectory ? 1 : 0,
+        'local_path': file.localPath,
+        'is_synced': file.isSynced ? 1 : 0,
+        'child_count': file.childCount,
       },
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
@@ -109,6 +131,10 @@ class DatabaseService {
         modifiedTime: DateTime.parse(maps[i]['modified']),
         isDirectory: maps[i]['is_directory'] == 1,
         mimeType: 'application/octet-stream',
+        isLocal: maps[i]['local_path'] != null,
+        isSynced: maps[i]['is_synced'] == 1,
+        localPath: maps[i]['local_path'],
+        childCount: maps[i]['child_count'] ?? 0,
       );
     });
   }
@@ -131,6 +157,10 @@ class DatabaseService {
       modifiedTime: DateTime.parse(maps[0]['modified']),
       isDirectory: maps[0]['is_directory'] == 1,
       mimeType: 'application/octet-stream',
+      isLocal: maps[0]['local_path'] != null,
+      isSynced: maps[0]['is_synced'] == 1,
+      localPath: maps[0]['local_path'],
+      childCount: maps[0]['child_count'] ?? 0,
     );
   }
 
@@ -145,25 +175,11 @@ class DatabaseService {
         'is_directory': file.isDirectory ? 1 : 0,
         'is_synced': file.isSynced ? 1 : 0,
         'local_path': file.localPath,
+        'child_count': file.childCount,
       },
       where: 'path = ?',
       whereArgs: [file.path],
     );
-  }
-
-  Future<void> clearFiles() async {
-    final db = await database;
-    await db.delete('files');
-  }
-
-  Future<bool> isFileAvailableLocally(String path) async {
-    final db = await database;
-    final results = await db.query(
-      'files',
-      where: 'path = ? AND local_path IS NOT NULL',
-      whereArgs: [path],
-    );
-    return results.isNotEmpty;
   }
 
   Future<List<FileItem>> getUnsyncedFiles() async {
@@ -182,8 +198,10 @@ class DatabaseService {
         modifiedTime: DateTime.parse(maps[i]['modified']),
         isDirectory: maps[i]['is_directory'] == 1,
         mimeType: 'application/octet-stream',
-        isLocal: true,
+        isLocal: maps[i]['local_path'] != null,
         isSynced: false,
+        localPath: maps[i]['local_path'],
+        childCount: maps[i]['child_count'] ?? 0,
       );
     });
   }
@@ -196,6 +214,27 @@ class DatabaseService {
       where: 'path = ?',
       whereArgs: [path],
     );
+  }
+
+  Future<void> clearFiles() async {
+    final db = await database;
+    await db.delete('files');
+  }
+
+  Future<bool> isFileExists(String path) async {
+    final db = await database;
+    final List<Map<String, dynamic>> results = await db.query(
+      'files',
+      where: 'path = ?',
+      whereArgs: [path],
+      limit: 1,
+    );
+    return results.isNotEmpty;
+  }
+
+  Future<void> close() async {
+    final db = await database;
+    await db.close();
   }
 
   // 备份相关操作
