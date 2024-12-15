@@ -83,13 +83,41 @@ class FileItem {
   bool get isVideo => mimeType.startsWith('video/');
   bool get isPdf => mimeType == 'application/pdf';
   bool get isText => mimeType.startsWith('text/');
+  bool get isAudio => mimeType.startsWith('audio/');
+  bool get isCode => [
+    'text/x-python',
+    'text/x-java',
+    'text/x-c',
+    'text/x-cpp',
+    'text/x-swift',
+    'text/x-rust',
+    'text/x-go',
+    'text/x-yaml',
+    'text/x-dockerfile',
+    'application/x-shellscript',
+    'application/json',
+    'text/javascript',
+    'text/css',
+    'text/html',
+    'text/xml',
+  ].contains(mimeType);
+  bool get isOffice => [
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  ].contains(mimeType);
 
   String get extension => name.contains('.') ? name.split('.').last.toLowerCase() : '';
   
-  String get formattedSize {
+  String get sizeString {
     if (size < 1024) return '$size B';
     if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
     if (size < 1024 * 1024 * 1024) return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
     return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
+
+  String get modifiedString => '${modifiedTime.year}-${modifiedTime.month.toString().padLeft(2, '0')}-${modifiedTime.day.toString().padLeft(2, '0')} ${modifiedTime.hour.toString().padLeft(2, '0')}:${modifiedTime.minute.toString().padLeft(2, '0')}';
 }

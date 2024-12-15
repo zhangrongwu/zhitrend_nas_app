@@ -240,4 +240,65 @@ class FileManager extends ChangeNotifier {
       throw Exception('File not found: $path');
     }
   }
+
+  // 压缩文件
+  Future<void> compressFiles(List<String> paths, String archiveName) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _apiService.compressFiles(paths, archiveName);
+      await refreshCurrentDirectory();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // 解压文件
+  Future<void> extractArchive(String path, {String? extractPath}) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _apiService.extractArchive(path, extractPath: extractPath);
+      await refreshCurrentDirectory();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // 批量操作文件
+  Future<List<Map<String, dynamic>>> batchOperation(
+    String operation,
+    List<String> files,
+  ) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final results = await _apiService.batchOperation(operation, files);
+      await refreshCurrentDirectory();
+      return results;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

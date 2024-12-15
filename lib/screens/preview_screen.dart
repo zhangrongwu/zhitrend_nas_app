@@ -8,6 +8,9 @@ import '../widgets/preview/image_preview.dart';
 import '../widgets/preview/video_preview.dart';
 import '../widgets/preview/pdf_preview.dart';
 import '../widgets/preview/text_preview.dart';
+import '../widgets/preview/audio_preview.dart';
+import '../widgets/preview/office_preview.dart';
+import '../widgets/dialogs/share_dialog.dart';
 
 class PreviewScreen extends StatelessWidget {
   final FileItem file;
@@ -30,9 +33,11 @@ class PreviewScreen extends StatelessWidget {
             ),
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () {
-              // TODO: Implement share functionality
-            },
+            onPressed: () => _shareFile(context),
+          ),
+          IconButton(
+            icon: const Icon(Icons.more_vert),
+            onPressed: () => _showMoreOptions(context),
           ),
         ],
       ),
@@ -72,8 +77,22 @@ class PreviewScreen extends StatelessWidget {
       );
     }
 
-    if (file.isText) {
+    if (file.isText || file.isCode) {
       return TextPreview(
+        url: previewUrl,
+        isLocal: file.isLocal,
+      );
+    }
+
+    if (file.isAudio) {
+      return AudioPreview(
+        url: previewUrl,
+        isLocal: file.isLocal,
+      );
+    }
+
+    if (file.isOffice) {
+      return OfficePreview(
         url: previewUrl,
         isLocal: file.isLocal,
       );
@@ -153,5 +172,89 @@ class PreviewScreen extends StatelessWidget {
         );
       }
     }
+  }
+
+  Future<void> _shareFile(BuildContext context) async {
+    final apiService = context.read<ApiService>();
+    try {
+      final shareUrl = await apiService.createShareLink(file.path);
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => ShareDialog(shareUrl: shareUrl),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating share link: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showMoreOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.info),
+            title: const Text('File Info'),
+            onTap: () {
+              Navigator.pop(context);
+              _showFileInfo(context);
+            },
+          ),
+          if (!file.isLocal)
+            ListTile(
+              leading: const Icon(Icons.download),
+              title: const Text('Download'),
+              onTap: () {
+                Navigator.pop(context);
+                _downloadFile(context);
+              },
+            ),
+          ListTile(
+            leading: const Icon(Icons.share),
+            title: const Text('Share'),
+            onTap: () {
+              Navigator.pop(context);
+              _shareFile(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFileInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('File Information'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Name: ${file.name}'),
+            Text('Size: ${file.sizeString}'),
+            Text('Modified: ${file.modifiedString}'),
+            Text('Path: ${file.path}'),
+            if (file.isLocal) Text('Local Path: ${file.localPath}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -9,6 +9,8 @@ class FileListItem extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onShare;
   final VoidCallback? onDelete;
+  final VoidCallback? onCompress;
+  final VoidCallback? onExtract;
 
   const FileListItem({
     super.key,
@@ -16,6 +18,8 @@ class FileListItem extends StatelessWidget {
     required this.onTap,
     this.onShare,
     this.onDelete,
+    this.onCompress,
+    this.onExtract,
   });
 
   String _formatFileSize(int bytes) {
@@ -46,6 +50,60 @@ class FileListItem extends StatelessWidget {
         : _formatFileSize(file.size);
     final dateText = DateFormat('yyyy-MM-dd HH:mm').format(file.modifiedTime);
     return Text('$sizeText • $dateText');
+  }
+
+  Widget _buildActionButtons(BuildContext context) {
+    final selectionManager = Provider.of<SelectionManager>(context);
+    final isSelected = selectionManager.isSelected(file);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // 分享按钮
+        if (onShare != null && !file.isDirectory)
+          IconButton(
+            icon: const Icon(Icons.share),
+            onPressed: onShare,
+            tooltip: '分享',
+          ),
+
+        // 压缩按钮
+        if (onCompress != null)
+          IconButton(
+            icon: const Icon(Icons.archive),
+            onPressed: onCompress,
+            tooltip: '压缩',
+          ),
+
+        // 解压按钮
+        if (onExtract != null && file.name.toLowerCase().endsWith('.zip'))
+          IconButton(
+            icon: const Icon(Icons.unarchive),
+            onPressed: onExtract,
+            tooltip: '解压',
+          ),
+
+        // 删除按钮
+        if (onDelete != null)
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: onDelete,
+            tooltip: '删除',
+          ),
+
+        // 选择按钮
+        Checkbox(
+          value: isSelected,
+          onChanged: (value) {
+            if (value == true) {
+              selectionManager.select(file);
+            } else {
+              selectionManager.deselect(file);
+            }
+          },
+        ),
+      ],
+    );
   }
 
   @override
@@ -95,26 +153,7 @@ class FileListItem extends StatelessWidget {
           subtitle: _buildSubtitle(),
           trailing: selectionManager.isSelectionMode
               ? null
-              : PopupMenuButton(
-                  itemBuilder: (context) => [
-                    if (onShare != null)
-                      PopupMenuItem(
-                        child: const ListTile(
-                          leading: Icon(Icons.share),
-                          title: Text('Share'),
-                        ),
-                        onTap: onShare,
-                      ),
-                    if (onDelete != null)
-                      PopupMenuItem(
-                        child: const ListTile(
-                          leading: Icon(Icons.delete),
-                          title: Text('Delete'),
-                        ),
-                        onTap: onDelete,
-                      ),
-                  ],
-                ),
+              : _buildActionButtons(context),
           onTap: selectionManager.isSelectionMode
               ? () => selectionManager.toggleSelection(file)
               : onTap,

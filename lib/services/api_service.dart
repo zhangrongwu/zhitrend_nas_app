@@ -183,4 +183,80 @@ class ApiService {
       rethrow;
     }
   }
+
+  // 创建分享链接
+  Future<Map<String, dynamic>> createShareLink(String path, {int? expiresInHours}) async {
+    try {
+      final response = await _dio.post('/api/files/share', queryParameters: {
+        'path': path,
+        if (expiresInHours != null) 'expires_in_hours': expiresInHours,
+      });
+
+      if (response.statusCode == 200) {
+        return response.data;
+      } else {
+        throw Exception('Failed to create share link');
+      }
+    } catch (e) {
+      debugPrint('Error creating share link: $e');
+      rethrow;
+    }
+  }
+
+  // 压缩文件
+  Future<String> compressFiles(List<String> paths, String archiveName) async {
+    try {
+      final response = await _dio.post('/api/files/compress', data: {
+        'paths': paths,
+        'archive_name': archiveName,
+      });
+
+      if (response.statusCode == 200) {
+        return response.data['archive_path'];
+      } else {
+        throw Exception('Failed to compress files');
+      }
+    } catch (e) {
+      debugPrint('Error compressing files: $e');
+      rethrow;
+    }
+  }
+
+  // 解压文件
+  Future<String> extractArchive(String path, {String? extractPath}) async {
+    try {
+      final response = await _dio.post('/api/files/extract', data: {
+        'path': path,
+        if (extractPath != null) 'extract_path': extractPath,
+      });
+
+      if (response.statusCode == 200) {
+        return response.data['extract_path'];
+      } else {
+        throw Exception('Failed to extract archive');
+      }
+    } catch (e) {
+      debugPrint('Error extracting archive: $e');
+      rethrow;
+    }
+  }
+
+  // 批量操作文件
+  Future<List<Map<String, dynamic>>> batchOperation(String operation, List<String> files) async {
+    try {
+      final response = await _dio.post('/api/files/batch', data: {
+        'operation': operation,
+        'files': files,
+      });
+
+      if (response.statusCode == 200) {
+        return List<Map<String, dynamic>>.from(response.data['results']);
+      } else {
+        throw Exception('Failed to perform batch operation');
+      }
+    } catch (e) {
+      debugPrint('Error performing batch operation: $e');
+      rethrow;
+    }
+  }
 }
